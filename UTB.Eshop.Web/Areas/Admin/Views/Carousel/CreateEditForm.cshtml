@@ -1,0 +1,18 @@
+﻿@model CarouselItem
+<form asp-action="@ViewBag.Action" method="post">
+    @{
+        if (ViewBag.Action == "Edit")
+        { 
+            <input asp-for="ID" type="hidden" />
+        }
+    }
+    <div class="form-group">
+        <label>Image Source</label>
+        <input asp-for="ImageSrc" class="form-control" placeholder="Enter Image Source">
+    </div>
+    <div class="form-group">
+        <label>Image Alternative Text</label>
+        <input asp-for="ImageAlt" class="form-control" placeholder="Enter Image Alt">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>

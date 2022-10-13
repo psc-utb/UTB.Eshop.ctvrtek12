@@ -1,0 +1,10 @@
+﻿@model CarouselItem
+@{
+    ViewData["Title"] = "Editace položky Carouselu";
+}
+<h1>@ViewData["Title"]</h1>
+
+@{
+    ViewBag.Action = "Edit";
+}
+<partial name="CreateEditForm" model="Model" />
