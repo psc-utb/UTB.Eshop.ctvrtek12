@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using UTB.Eshop.Domain.Abstraction;
 using UTB.Eshop.Web.Models.Database;
 using UTB.Eshop.Web.Models.Entities;
 
@@ -12,9 +14,15 @@ namespace UTB.Eshop.Web.Areas.Admin.Controllers
     public class CarouselController : Controller
     {
         readonly EshopDbContext eshopDbContext;
-        public CarouselController(EshopDbContext eshopDbContext)
+        IFileUpload fileUpload;
+        ICheckFileContent checkFileContent;
+        ICheckFileLength checkFileLength;
+        public CarouselController(EshopDbContext eshopDbContext, IFileUpload fileUpload, ICheckFileContent checkFileContent, ICheckFileLength checkFileLength)
         {
             this.eshopDbContext = eshopDbContext;
+            this.fileUpload = fileUpload;
+            this.checkFileContent = checkFileContent;
+            this.checkFileLength = checkFileLength;
         }
 
         public IActionResult Select()
@@ -29,11 +37,27 @@ namespace UTB.Eshop.Web.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create(CarouselItem carouselItemFromForm)
+        public async Task<IActionResult> Create(CarouselItem carouselItemFromForm)
         {
-            eshopDbContext.CarouselItems.Add(carouselItemFromForm);
-            eshopDbContext.SaveChanges();
-            return RedirectToAction(nameof(Select));
+            if (carouselItemFromForm.Image != null)
+            {
+                if (checkFileContent.CheckFileContent(carouselItemFromForm.Image, "image")
+                    && checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
+                {
+                    fileUpload.ContentType = "image";
+                    fileUpload.FileLength = 5_000_000;
+                    carouselItemFromForm.ImageSrc = await fileUpload.FileUploadAsync(carouselItemFromForm.Image, Path.Combine("img", "carousel"));
+
+                    if (String.IsNullOrEmpty(carouselItemFromForm.ImageSrc) == false)
+                    {
+                        eshopDbContext.CarouselItems.Add(carouselItemFromForm);
+                        eshopDbContext.SaveChanges();
+                        return RedirectToAction(nameof(Select));
+                    }
+                }
+            }
+
+            return View(carouselItemFromForm);
         }
 
 
@@ -50,13 +74,33 @@ namespace UTB.Eshop.Web.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public IActionResult Edit(CarouselItem carouselItemFromForm)
+        public async Task<IActionResult> Edit(CarouselItem carouselItemFromForm)
         {
             CarouselItem carouselItem = eshopDbContext.CarouselItems.FirstOrDefault(carItem => carItem.ID == carouselItemFromForm.ID);
 
             if (carouselItem != null)
             {
-                carouselItem.ImageSrc = carouselItemFromForm.ImageSrc;
+
+                if (carouselItemFromForm.Image != null)
+                {
+                    if (checkFileContent.CheckFileContent(carouselItemFromForm.Image, "image")
+                        && checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
+                    {
+                        fileUpload.ContentType = "image";
+                        fileUpload.FileLength = 5_000_000;
+                        carouselItemFromForm.ImageSrc = await fileUpload.FileUploadAsync(carouselItemFromForm.Image, Path.Combine("img", "carousel"));
+
+                        if (String.IsNullOrEmpty(carouselItemFromForm.ImageSrc) == false)
+                        {
+                            carouselItem.ImageSrc = carouselItemFromForm.ImageSrc;
+                        }
+                        else
+                            return View(carouselItemFromForm);
+                    }
+                    else
+                        return View(carouselItemFromForm);
+                }
+
                 carouselItem.ImageAlt = carouselItemFromForm.ImageAlt;
 
                 eshopDbContext.SaveChanges();
