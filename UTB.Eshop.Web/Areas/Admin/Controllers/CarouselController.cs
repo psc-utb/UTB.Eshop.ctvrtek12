@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using UTB.Eshop.Domain.Abstraction;
 using UTB.Eshop.Web.Models.Database;
 using UTB.Eshop.Web.Models.Entities;
+using UTB.Eshop.Web.Models.ViewModels;
 
 namespace UTB.Eshop.Web.Areas.Admin.Controllers
 {
@@ -37,18 +38,19 @@ namespace UTB.Eshop.Web.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CarouselItem carouselItemFromForm)
+        public async Task<IActionResult> Create(CarouselItemImageRequired carouselItemFromForm)
         {
-            if (carouselItemFromForm.Image != null)
+            ModelState.Remove(nameof(CarouselItem.ImageSrc));
+            if (ModelState.IsValid)
             {
-                if (checkFileContent.CheckFileContent(carouselItemFromForm.Image, "image")
-                    && checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
+                if (checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
                 {
                     fileUpload.ContentType = "image";
                     fileUpload.FileLength = 5_000_000;
                     carouselItemFromForm.ImageSrc = await fileUpload.FileUploadAsync(carouselItemFromForm.Image, Path.Combine("img", "carousel"));
 
-                    if (String.IsNullOrEmpty(carouselItemFromForm.ImageSrc) == false)
+                    ModelState.Clear();
+                    if (TryValidateModel(carouselItemFromForm))
                     {
                         eshopDbContext.CarouselItems.Add(carouselItemFromForm);
                         eshopDbContext.SaveChanges();
@@ -81,31 +83,37 @@ namespace UTB.Eshop.Web.Areas.Admin.Controllers
             if (carouselItem != null)
             {
 
-                if (carouselItemFromForm.Image != null)
+                ModelState.Remove(nameof(CarouselItem.ImageSrc));
+                if (ModelState.IsValid)
                 {
-                    if (checkFileContent.CheckFileContent(carouselItemFromForm.Image, "image")
-                        && checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
+                    if (carouselItemFromForm.Image != null)
                     {
-                        fileUpload.ContentType = "image";
-                        fileUpload.FileLength = 5_000_000;
-                        carouselItemFromForm.ImageSrc = await fileUpload.FileUploadAsync(carouselItemFromForm.Image, Path.Combine("img", "carousel"));
-
-                        if (String.IsNullOrEmpty(carouselItemFromForm.ImageSrc) == false)
+                        if (checkFileLength.CheckFileLength(carouselItemFromForm.Image, 5_000_000))
                         {
-                            carouselItem.ImageSrc = carouselItemFromForm.ImageSrc;
+                            fileUpload.ContentType = "image";
+                            fileUpload.FileLength = 5_000_000;
+                            carouselItemFromForm.ImageSrc = await fileUpload.FileUploadAsync(carouselItemFromForm.Image, Path.Combine("img", "carousel"));
+
+                            ModelState.Clear();
+                            if (TryValidateModel(carouselItemFromForm))
+                            {
+                                carouselItem.ImageSrc = carouselItemFromForm.ImageSrc;
+                            }
+                            else
+                                return View(carouselItemFromForm);
                         }
                         else
                             return View(carouselItemFromForm);
                     }
-                    else
-                        return View(carouselItemFromForm);
+
+                    carouselItem.ImageAlt = carouselItemFromForm.ImageAlt;
+
+                    eshopDbContext.SaveChanges();
+
+                    return RedirectToAction(nameof(Select));
                 }
-
-                carouselItem.ImageAlt = carouselItemFromForm.ImageAlt;
-
-                eshopDbContext.SaveChanges();
-
-                return RedirectToAction(nameof(Select));
+                else
+                    return View(carouselItemFromForm);
             }
 
             return NotFound();
