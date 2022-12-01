@@ -12,10 +12,10 @@ namespace UTB.Eshop.Web.Areas.Security.Controllers
     [Area("Security")]
     public class AccountController : Controller
     {
-
-        public AccountController()
+        ISecurityApplicationService securityService;
+        public AccountController(ISecurityApplicationService securityService)
         {
-
+            this.securityService = securityService;
         }
 
 
@@ -24,11 +24,31 @@ namespace UTB.Eshop.Web.Areas.Security.Controllers
             return View();
         }
 
-        /*[HttpPost]
+        [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel registerVM)
         {
+            if (ModelState.IsValid == true)
+            {
+                string[] errors = await securityService.Register(registerVM, Models.Identity.Roles.Customer);
 
-        }*/
+                if (errors == null)
+                {
+                    LoginViewModel loginVM = new LoginViewModel()
+                    {
+                        Username = registerVM.Username,
+                        Password = registerVM.Password
+                    };
+
+                    return await Login(loginVM);
+                }
+                else
+                {
+                    //logovani chyb z errors
+                }
+            }
+
+            return View(registerVM);
+        }
 
 
         public IActionResult Login()
@@ -36,17 +56,29 @@ namespace UTB.Eshop.Web.Areas.Security.Controllers
             return View();
         }
 
-        /*[HttpPost]
+        [HttpPost]
         public async Task<IActionResult> Login(LoginViewModel loginVM)
         {
+            if(ModelState.IsValid == true)
+            {
+                bool isLogged = await securityService.Login(loginVM);
+                if (isLogged == true)
+                {
+                    return RedirectToAction(nameof(HomeController.Index), nameof(HomeController).Replace("Controller", String.Empty), new { area = String.Empty });
+                }
 
-        }*/
+                loginVM.LoginFailed = true;
+            }
+
+            return View(loginVM);
+        }
 
 
-        /*public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout()
         {
-
-        }*/
+            await securityService.Logout();
+            return RedirectToAction(nameof(Login));
+        }
 
     }
 }
